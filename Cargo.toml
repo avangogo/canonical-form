@@ -1,0 +1,10 @@
+[package]
+name = "canonical-form"
+version = "0.1.0"
+authors = ["Rémi de Verclos"]
+description = "Reduce graphs and other combinatorial structures modulo isomorphism"
+license = "MIT"
+publish = true
+edition = "2018"
+
+[dependencies]
