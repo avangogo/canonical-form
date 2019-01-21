@@ -138,7 +138,7 @@ impl Partition {
         let mut res = Vec::new();
         let mut i = 0;
         while i < self.elems.len() {
-            let s = self.set_id[i];
+            let s = self.set_id[self.elems[i]];
             res.push(s);
             i = self.end[s]
         }
