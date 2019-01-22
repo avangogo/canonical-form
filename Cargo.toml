@@ -5,6 +5,9 @@ authors = ["Rémi de Verclos <r.deverclos@math.ru.nl>"]
 readme = "README.md"
 description = "Reduce graphs and other combinatorial structures modulo isomorphism."
 license = "MIT"
+repository = "https://github.com/avangogo/canonical-form"
+documentation = "https://docs.rs/canonical-form"
+keywords = ["graph", "group"]
 publish = true
 edition = "2018"
 
