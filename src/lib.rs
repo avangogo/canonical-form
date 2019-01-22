@@ -1,6 +1,57 @@
+//! ==
 //! Algorithms to reduce combinatorial structures modulo isomorphism.
 //!
 //! This can typically be use to to test if two graphs are isomorphic.
+//!```
+//!use canonical_form::*;
+//!
+//!// Simple Graph implementation as adjacency list
+//!#[derive(Ord, PartialOrd, PartialEq, Eq, Clone, Debug)]
+//!struct Graph {
+//!       adj: Vec<Vec<usize>>,
+//!}
+//!
+//!
+//!impl Graph {
+//!    fn new(n: usize, edges: &[(usize, usize)]) -> Self {
+//!        let mut adj = vec![Vec::new(); n];
+//!        for &(u, v) in edges {
+//!            adj[u].push(v);
+//!            adj[v].push(u);
+//!        }
+//!        Graph { adj }
+//!    }
+//!}
+//!
+//!// The Canonize trait allows to use the canonial form algorithms
+//!impl Canonize for Graph {
+//!    fn size(&self) -> usize {
+//!        self.adj.len()
+//!    }
+//!    fn apply_morphism(&self, perm: &[usize]) -> Self {
+//!        let mut adj = vec![Vec::new(); self.size()];
+//!        for (i, nbrs) in self.adj.iter().enumerate() {
+//!            adj[perm[i]] = nbrs.iter().map(|&u| perm[u]).collect();
+//!            adj[perm[i]].sort();
+//!        }
+//!        Graph { adj }
+//!    }
+//!    fn invariant_neighborhood(&self, u: usize) -> Vec<Vec<usize>> {
+//!        vec![self.adj[u].clone()]
+//!    }
+//!}
+//!
+//!// Usage of library functions
+//!let c5 = Graph::new(5, &[(0, 1), (1, 2), (2, 3), (3, 4), (4, 0)]);
+//!let other_c5 = Graph::new(5, &[(0, 2), (2, 1), (1, 4), (4, 3), (3, 0)]);
+//!assert_eq!(canonical_form(&c5), canonical_form(&other_c5));
+//!
+//!let p5 = Graph::new(5, &[(0, 1), (1, 2), (2, 3), (3, 4)]);
+//!assert!(canonical_form(&c5) != canonical_form(&p5));
+//!
+//!let p = canonical_form_morphism(&c5);
+//!assert_eq!(c5.apply_morphism(&p), canonical_form(&c5));
+//!```
 
 #![warn(
     missing_docs,
@@ -13,6 +64,7 @@
     unused_import_braces,
     unused_qualifications,
     unused_labels,
+    unused_results
 )]
 
 mod refine;
@@ -33,7 +85,7 @@ where
     ///
     /// The elements of `x` are assimilated to the number of `0..x.self()`.
     fn size(&self) -> usize;
-    
+
     /// Returns the result of the action of a permuation `perm` on the object.
     ///
     /// The permutation `perm` is represented as a slice of size `self.size()`
@@ -80,15 +132,6 @@ fn target_selector(part: &Partition) -> Option<usize> {
         }
     }
     arg_min
-}
-
-/// Apply to `g` the permutation that correspond to the partitions of `part`.
-fn apply<F>(part: &Partition, g: &F) -> F
-where
-    F: Canonize,
-{
-    let morphism = part.to_bijection().unwrap();
-    g.apply_morphism(&morphism)
 }
 
 /// Compute the coarsest refinement of `partition` with part undistinguishable
@@ -155,7 +198,7 @@ fn fca(u: &[usize], v: &[usize]) -> usize {
 }
 
 /// Node of the tree of the normalization process
-#[derive(Clone,Debug)]
+#[derive(Clone, Debug)]
 struct IsoTreeNode {
     pi: Partition,
     children: Vec<usize>,
@@ -165,7 +208,10 @@ impl IsoTreeNode {
     fn new<F: Canonize>(mut partition: Partition, g: &F) -> Self {
         refine(&mut partition, g);
         IsoTreeNode {
-            children: get_children(&partition),
+            children: match target_selector(&partition) {
+                Some(set) => partition.part(set).to_vec(),
+                None => Vec::new(),
+            },
             pi: partition,
         }
     }
@@ -175,9 +221,6 @@ impl IsoTreeNode {
         refine(&mut new_pi, g);
         Self::new(new_pi, g)
     }
-    fn is_leaf(&mut self) -> bool {
-        self.pi.is_discrete()
-    }
     fn empty() -> Self {
         IsoTreeNode {
             children: Vec::new(),
@@ -186,17 +229,10 @@ impl IsoTreeNode {
     }
 }
 
-fn get_children(pi: &Partition) -> Vec<usize> {
-    match target_selector(pi) {
-        Some(p) => pi.part(p).to_vec(),
-        None => Vec::new(),
-    }
-}
-
 /// Normal form of `g` under the action of isomorphisms that
 /// stabilize the parts of `partition`.
 fn canonical_form_constraint<F>(g: &F, partition: Partition) -> F
-    where
+where
     F: Canonize,
 {
     let mut zeta: BTreeMap<F, Vec<usize>> = BTreeMap::new();
@@ -205,14 +241,15 @@ fn canonical_form_constraint<F>(g: &F, partition: Partition) -> F
     let mut path = Vec::new();
     let mut node = IsoTreeNode::new(partition, g);
     loop {
-        if node.is_leaf() {
-            let gv = apply(&node.pi, g);
-            if let Some(u) = zeta.get(&gv) {
+        if let Some(phi) = node.pi.as_bijection() {
+            //if node is a leaf
+            let phi_g = g.apply_morphism(phi);
+            if let Some(u) = zeta.get(&phi_g) {
                 let k = fca(u, &path) + 1;
                 tree.truncate(k);
                 path.truncate(k);
             } else {
-                zeta.insert(gv, path.clone());
+                let _ = zeta.insert(phi_g, path.clone());
             }
         };
         if let Some(u) = node.children.pop() {
@@ -224,7 +261,7 @@ fn canonical_form_constraint<F>(g: &F, partition: Partition) -> F
             match tree.pop() {
                 Some(n) => {
                     node = n;
-                    path.pop();
+                    let _ = path.pop();
                 }
                 None => break,
             }
@@ -234,7 +271,7 @@ fn canonical_form_constraint<F>(g: &F, partition: Partition) -> F
 }
 
 /// Iterator on the automorphisms of a combinatorial structure.
-#[derive(Clone,Debug)]
+#[derive(Clone, Debug)]
 pub struct AutomorphismIterator<F> {
     tree: Vec<IsoTreeNode>,
     node: IsoTreeNode,
@@ -243,7 +280,7 @@ pub struct AutomorphismIterator<F> {
 
 impl<F: Canonize> AutomorphismIterator<F> {
     /// Iterator on the automorphisms of `g` that preserve `partition`.
-    fn new(g: &F, partition: Partition) -> Self {
+    fn with_partition(g: &F, partition: Partition) -> Self {
         assert!(*g == canonical_form_constraint(g, partition.clone()));
         AutomorphismIterator {
             tree: vec![IsoTreeNode::new(partition, g)],
@@ -258,7 +295,11 @@ impl<F: Canonize> AutomorphismIterator<F> {
         for i in 0..sigma {
             partition.individualize(i)
         }
-        Self::new(g, partition)
+        Self::with_partition(g, partition)
+    }
+    /// Create the iterator on the automorphisms of `g`.
+    pub fn new(g: &F) -> Self {
+        Self::typed(g, 0)
     }
 }
 
@@ -276,11 +317,9 @@ impl<F: Canonize> Iterator for AutomorphismIterator<F> {
                     None => return None,
                 }
             }
-            if self.node.is_leaf() {
-                let morphism = self.node.pi.to_bijection().unwrap();
-                let gv = self.g.apply_morphism(&morphism);
-                if gv == self.g {
-                    return Some(morphism);
+            if let Some(phi) = self.node.pi.as_bijection() {
+                if self.g.apply_morphism(phi) == self.g {
+                    return Some(phi.to_vec());
                 }
             };
         }
@@ -326,12 +365,12 @@ where
     let mut max = None;
     let mut phimax = Vec::new();
     loop {
-        if node.is_leaf() {
-            let phi = node.pi.to_bijection().unwrap();
-            let gv = Some(g.apply_morphism(&phi));
-            if gv > max {
-                max = gv;
-                phimax = phi;
+        if let Some(phi) = node.pi.as_bijection() {
+            // If node is a leaf
+            let phi_g = Some(g.apply_morphism(phi));
+            if phi_g > max {
+                max = phi_g;
+                phimax = phi.to_vec();
             }
         };
         if let Some(u) = node.children.pop() {
@@ -377,12 +416,12 @@ mod tests {
 
     #[derive(Ord, PartialOrd, PartialEq, Eq, Clone, Debug)]
     struct Graph {
-        adj: Vec<Vec<usize>>
+        adj: Vec<Vec<usize>>,
     }
 
     impl Graph {
         fn new(n: usize, edges: &[(usize, usize)]) -> Self {
-            let mut adj = vec!(Vec::new(); n);
+            let mut adj = vec![Vec::new(); n];
             for &(u, v) in edges {
                 adj[u].push(v);
                 adj[v].push(u);
@@ -390,34 +429,44 @@ mod tests {
             Graph { adj }
         }
     }
-    
+
     impl Canonize for Graph {
         fn size(&self) -> usize {
             self.adj.len()
         }
         fn apply_morphism(&self, perm: &[usize]) -> Self {
-            let mut adj = vec!(Vec::new(); self.size());
+            let mut adj = vec![Vec::new(); self.size()];
             for (i, nbrs) in self.adj.iter().enumerate() {
-                adj[perm[i]] = nbrs.iter().map(|&u|{perm[u]}).collect();
+                adj[perm[i]] = nbrs.iter().map(|&u| perm[u]).collect();
                 adj[perm[i]].sort();
-            };
+            }
             Graph { adj }
         }
         fn invariant_neighborhood(&self, u: usize) -> Vec<Vec<usize>> {
-            vec!(self.adj[u].clone())
+            vec![self.adj[u].clone()]
         }
     }
 
     #[test]
     fn graph() {
-        let c5 = Graph::new(5, &[(0,1),(1,2),(2,3),(3,4),(4,0)]);
-        let other_c5 = Graph::new(5, &[(0,2),(2,1),(1,4),(4,3),(3,0)]);
+        let c5 = Graph::new(5, &[(0, 1), (1, 2), (2, 3), (3, 4), (4, 0)]);
+        let other_c5 = Graph::new(5, &[(0, 2), (2, 1), (1, 4), (4, 3), (3, 0)]);
         assert_eq!(canonical_form(&c5), canonical_form(&other_c5));
 
-        let p5 = Graph::new(5, &[(0,1),(1,2),(2,3),(3,4)]);
+        let p5 = Graph::new(5, &[(0, 1), (1, 2), (2, 3), (3, 4)]);
         assert!(canonical_form(&c5) != canonical_form(&p5));
 
-        let p =  canonical_form_morphism(&c5);
+        let p = canonical_form_morphism(&c5);
         assert_eq!(c5.apply_morphism(&p), canonical_form(&c5));
+    }
+    #[test]
+    fn automorphisms_iterator() {
+        let c4 = canonical_form(&Graph::new(4, &[(0, 1), (1, 2), (2, 3), (3, 0)]));
+        let mut count = 0;
+        for phi in AutomorphismIterator::new(&c4) {
+            assert_eq!(c4.apply_morphism(&phi), c4);
+            count += 1;
+        }
+        assert_eq!(count, 8)
     }
 }

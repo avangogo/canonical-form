@@ -2,6 +2,9 @@
 name = "canonical-form"
 version = "0.2.0"
 authors = ["Rémi de Verclos <r.deverclos@math.ru.nl>"]
+repository = ""
+documentation = ""
+readme = "README.md"
 description = "Reduce graphs and other combinatorial structures modulo isomorphism."
 license = "MIT"
 publish = true

@@ -107,11 +107,11 @@ impl Partition {
 
     /// If the partition conatains only cells of size 1, returns the bijection
     /// that map each element to the position of the corresponding cell.
-    pub fn to_bijection(&self) -> Option<Vec<usize>> {
+    pub fn as_bijection(&self) -> Option<&[usize]> {
         if !self.is_discrete() {
             None
         } else {
-            Some(self.rev_elems.clone())
+            Some(&self.rev_elems)
         }
     }
 
@@ -152,18 +152,18 @@ impl Partition {
 impl Display for Partition {
     fn fmt(&self, f: &mut Formatter) -> Result {
         self.check_consistent();
-        write!(f, "(").unwrap();
+        write!(f, "(")?;
         for i in 0..self.elems.len() {
             if i > 0 {
                 if self.begin[self.set_id[self.elems[i]]] == i {
-                    write!(f, ")(").unwrap();
+                    write!(f, ")(")?;
                 } else {
-                    write!(f, ",").unwrap();
+                    write!(f, ",")?;
                 }
             }
-            write!(f, "{}", self.elems[i]).unwrap();
+            write!(f, "{}", self.elems[i])?;
         }
-        write!(f, ")").unwrap();
+        write!(f, ")")?;
         Ok(())
     }
 }
