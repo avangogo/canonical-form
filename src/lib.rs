@@ -1,4 +1,3 @@
-//! ==
 //! Algorithms to reduce combinatorial structures modulo isomorphism.
 //!
 //! This can typically be use to to test if two graphs are isomorphic.
