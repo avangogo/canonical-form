@@ -1,6 +1,6 @@
 [package]
 name = "canonical-form"
-version = "0.5.0"
+version = "0.6.0"
 authors = ["Rémi de Verclos <r.deverclos@math.ru.nl>"]
 readme = "README.md"
 description = "Reduce graphs and other combinatorial structures modulo isomorphism."

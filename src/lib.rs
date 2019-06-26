@@ -4,7 +4,7 @@
 //!```
 //!use canonical_form::*;
 //!
-//!// Simple Graph implementation as adjacency list
+//!// Simple Graph implementation as adjacency lists
 //!#[derive(Ord, PartialOrd, PartialEq, Eq, Clone, Debug)]
 //!struct Graph {
 //!       adj: Vec<Vec<usize>>,
@@ -121,7 +121,7 @@ where
 /// This part is chosen as a smallest part with at least 2 elements.
 /// Return None is the partition is discrete.
 fn target_selector(part: &Partition) -> Option<usize> {
-    let mut min = std::usize::MAX;
+    let mut min = usize::max_value();
     let mut arg_min = None;
     for i in part.parts() {
         let length = part.part(i).len();
@@ -159,7 +159,7 @@ where
         // base
         let m = (n + 1) as u64;
         let step = m.pow(invariant_size as u32);
-        let threshold = std::u64::MAX / step;
+        let threshold = u64::max_value() / step;
         while !stack.is_empty() && !partition.is_discrete() {
             // Re-initialize crible
             for e in &mut crible {
@@ -206,7 +206,7 @@ struct IsoTreeNode {
 impl IsoTreeNode {
     fn new<F: Canonize>(mut partition: Partition, g: &F) -> Self {
         refine(&mut partition, g);
-        IsoTreeNode {
+        Self {
             children: match target_selector(&partition) {
                 Some(set) => partition.part(set).to_vec(),
                 None => Vec::new(),
@@ -221,7 +221,7 @@ impl IsoTreeNode {
         Self::new(new_pi, g)
     }
     fn empty() -> Self {
-        IsoTreeNode {
+        Self {
             children: Vec::new(),
             pi: Partition::simple(0),
         }
@@ -281,7 +281,7 @@ impl<F: Canonize> AutomorphismIterator<F> {
     /// Iterator on the automorphisms of `g` that preserve `partition`.
     fn with_partition(g: &F, partition: Partition) -> Self {
         assert!(*g == canonical_form_constraint(g, partition.clone()));
-        AutomorphismIterator {
+        Self {
             tree: vec![IsoTreeNode::new(partition, g)],
             node: IsoTreeNode::empty(), // Dummy node that will be unstacked at the first iteration
             g: g.clone(),
@@ -335,7 +335,7 @@ where
     for i in 0..sigma {
         partition.individualize(i)
     }
-    canonical_form_constraint(&g, partition)
+    canonical_form_constraint(g, partition)
 }
 
 /// Computes a normal form of a combinatorial object.

@@ -16,7 +16,7 @@ pub struct Partition {
 impl Partition {
     /// Return the partition of `{0..n-1}` with one part.
     pub fn simple(size: usize) -> Self {
-        Partition {
+        Self {
             // allow zero size partition ?
             elems: (0..size).collect(),
             rev_elems: (0..size).collect(),
@@ -108,10 +108,10 @@ impl Partition {
     /// If the partition conatains only cells of size 1, returns the bijection
     /// that map each element to the position of the corresponding cell.
     pub fn as_bijection(&self) -> Option<&[usize]> {
-        if !self.is_discrete() {
-            None
-        } else {
+        if self.is_discrete() {
             Some(&self.rev_elems)
+        } else {
+            None
         }
     }
 
