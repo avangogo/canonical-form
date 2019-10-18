@@ -1,12 +1,17 @@
 # canonical-form
 
-Algorithms to reduce combinatorial structures modulo isomorphism.
+Algorithm to reduce combinatorial structures modulo isomorphism.
 
-This can typically be use to to test if two graphs are isomorphic.
+This can typically be used to to test if two graphs are isomorphic.
+
+The algorithm manipulate its input by actions of permutations
+and by testing equallity, plus some user-defined functions
+that help to break symmetries.
+
 ```rust
-use canonical_form::*;
+use canonical_form::Canonize;
 
-// Simple Graph implementation as adjacency list
+// Simple Graph implementation as adjacency lists
 #[derive(Ord, PartialOrd, PartialEq, Eq, Clone, Debug)]
 struct Graph {
       adj: Vec<Vec<usize>>,
@@ -45,13 +50,13 @@ impl Canonize for Graph {
 // Usage of library functions
 let c5 = Graph::new(5, &[(0, 1), (1, 2), (2, 3), (3, 4), (4, 0)]);
 let other_c5 = Graph::new(5, &[(0, 2), (2, 1), (1, 4), (4, 3), (3, 0)]);
-assert_eq!(canonical_form(&c5), canonical_form(&other_c5));
+assert_eq!(c5.canonical(), other_c5.canonical());
 
 let p5 = Graph::new(5, &[(0, 1), (1, 2), (2, 3), (3, 4)]);
-assert!(canonical_form(&c5) != canonical_form(&p5));
+assert!(c5.canonical() != p5.canonical());
 
-let p = canonical_form_morphism(&c5);
-assert_eq!(c5.apply_morphism(&p), canonical_form(&c5));
+let p = c5.morphism_to_canonical();
+assert_eq!(c5.apply_morphism(&p), c5.canonical());
 ```
 
 License: MIT
