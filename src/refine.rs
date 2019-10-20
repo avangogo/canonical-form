@@ -2,7 +2,8 @@
 //! structures.
 
 use std::fmt::{Display, Formatter, Result};
-
+use crate::Canonize;
+    
 /// A partition of a set `{0..n-1}`.
 /// Each part of the partition is refered by an index in `{0..k-1}`,
 /// where `k` is the number of parts.
@@ -231,9 +232,9 @@ impl Partition {
 
     /// If the partition conatains only cells of size 1, returns the bijection
     /// that map each element to the position of the corresponding cell.
-    pub fn as_bijection(&self) -> Option<&[usize]> {
+    pub fn as_bijection<F: Canonize>(&self) -> Option<&[usize]> {
         if self.is_discrete() {
-            Some(&self.rev_elems)
+            Some(if F::INVERT { &self.elems } else { &self.rev_elems })
         } else {
             None
         }

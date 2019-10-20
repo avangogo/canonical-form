@@ -111,15 +111,14 @@ where
     /// Return lists of vertices that are invariant isomorphism.
     ///
     /// This function helps the algorithm to be efficient.
-    /// The output `inv` is a vector such that each `inv[i]` is a vector
-    /// of distinct vertices `[v1, ..., vk]`
-    /// (so the `vi`  elements of `0..self.size()`) such that
-    /// for every permutation `perm`,
-    /// `self.invariant_neighborhood(perm[u])[i]`
-    /// is equal to `[perm[v1], ..., perm[vk]]` up to reordering.
+    /// The output `invar` is such that each `invar[i]` is a vector
+    /// of vertices `[v1, ..., vk]`
+    /// (so the `vi`s are elements of `0..self.size()`) such that
+    /// for every permutation `p`,
+    /// `self.apply_morphism(p).invariant_neighborhood(p[u])[i]`
+    /// is equal to `[p[v1], ..., p[vk]]` up to reordering.
     ///
-    /// The length of the output (the number of lists) has to be independent
-    /// of `u`.
+    /// The length of the output (the number of lists) has to be independent from `u`.
     fn invariant_neighborhood(&self, _u: usize) -> Vec<Vec<usize>> {
         Vec::new()
     }
@@ -180,6 +179,13 @@ where
         }
         AutomorphismIterator::new(self, partition)
     }
+
+    /// If true, then the relation of `invariant_neighborhood` are required to be true
+    /// for the inverse of the permutations instead of the pernutations.
+    /// That is, if `self.invariant_neighborhood[p[u]][i]` = `[p[v1], ..., p[vk]]`
+    /// Then `self.apply_morphism(p).invariant_neighborhood(p[u])[i]` is equal to
+    /// `[v1, ..., vk]` up to reordering.
+    const INVERT: bool = false;
 }
 
 /// Return the next part to be refined.
@@ -329,7 +335,7 @@ where
     let mut node = IsoTreeNode::root(&mut partition, g);
     loop {
         // If we have a leaf, treat it
-        if let Some(phi) = partition.as_bijection() {
+        if let Some(phi) = partition.as_bijection::<F>() {
             match zeta.entry(g.apply_morphism(phi)) {
                 Occupied(entry) =>
                 // We are in a branch isomorphic to a branch we explored
@@ -404,7 +410,7 @@ impl<F: Canonize> Iterator for AutomorphismIterator<F> {
                     None => return None,
                 }
             }
-            if let Some(phi) = self.partition.as_bijection() {
+            if let Some(phi) = self.partition.as_bijection::<F>() {
                 if self.g.apply_morphism(phi) == self.g {
                     return Some(phi.to_vec());
                 }
@@ -425,7 +431,7 @@ where
     let mut max = None;
     let mut phimax = Vec::new();
     loop {
-        if let Some(phi) = partition.as_bijection() {
+        if let Some(phi) = partition.as_bijection::<F>() {
             // If node is a leaf
             let phi_g = Some(g.apply_morphism(phi));
             if phi_g > max {
