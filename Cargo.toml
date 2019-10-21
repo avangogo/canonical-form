@@ -1,13 +1,13 @@
 [package]
 name = "canonical-form"
-version = "0.8.0"
+version = "0.9.0"
 authors = ["Rémi de Verclos <remi.de.joannis.de.verclos@ens-lyon.org>"]
 readme = "README.md"
 description = "Reduce graphs and other combinatorial structures modulo isomorphism."
 license = "MIT"
 repository = "https://github.com/avangogo/canonical-form"
 documentation = "https://docs.rs/canonical-form"
-keywords = ["graph", "group"]
+keywords = ["graph", "group", "combinatorics"]
 publish = true
 edition = "2018"
 

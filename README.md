@@ -25,6 +25,9 @@ impl Graph {
            adj[u].push(v);
            adj[v].push(u);
        }
+       for list in &mut adj {
+           list.sort() // Necessary to make the derived `==` correct
+       }
        Graph { adj }
    }
 }
@@ -48,15 +51,21 @@ impl Canonize for Graph {
 }
 
 // Usage of library functions
+// Two isomorphic graphs
 let c5 = Graph::new(5, &[(0, 1), (1, 2), (2, 3), (3, 4), (4, 0)]);
 let other_c5 = Graph::new(5, &[(0, 2), (2, 1), (1, 4), (4, 3), (3, 0)]);
 assert_eq!(c5.canonical(), other_c5.canonical());
 
+// Non-isomorphic graphs
 let p5 = Graph::new(5, &[(0, 1), (1, 2), (2, 3), (3, 4)]);
 assert!(c5.canonical() != p5.canonical());
 
+// Recovering the permutation that gives the canonical form
 let p = c5.morphism_to_canonical();
 assert_eq!(c5.apply_morphism(&p), c5.canonical());
+
+// Enumerating automorphisms
+assert_eq!(c5.canonical().automorphisms().count(), 10)
 ```
 
 License: MIT

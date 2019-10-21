@@ -23,6 +23,9 @@
 //!            adj[u].push(v);
 //!            adj[v].push(u);
 //!        }
+//!        for list in &mut adj {
+//!            list.sort() // Necessary to make the derived `==` correct
+//!        }
 //!        Graph { adj }
 //!    }
 //!}
@@ -45,16 +48,22 @@
 //!    }
 //!}
 //!
-//!// Usage of library functions
-//!let c5 = Graph::new(5, &[(0, 1), (1, 2), (2, 3), (3, 4), (4, 0)]);
-//!let other_c5 = Graph::new(5, &[(0, 2), (2, 1), (1, 4), (4, 3), (3, 0)]);
-//!assert_eq!(c5.canonical(), other_c5.canonical());
+//! // Usage of library functions
+//! // Two isomorphic graphs
+//! let c5 = Graph::new(5, &[(0, 1), (1, 2), (2, 3), (3, 4), (4, 0)]);
+//! let other_c5 = Graph::new(5, &[(0, 2), (2, 1), (1, 4), (4, 3), (3, 0)]);
+//! assert_eq!(c5.canonical(), other_c5.canonical());
 //!
-//!let p5 = Graph::new(5, &[(0, 1), (1, 2), (2, 3), (3, 4)]);
-//!assert!(c5.canonical() != p5.canonical());
+//! // Non-isomorphic graphs
+//! let p5 = Graph::new(5, &[(0, 1), (1, 2), (2, 3), (3, 4)]);
+//! assert!(c5.canonical() != p5.canonical());
 //!
-//!let p = c5.morphism_to_canonical();
-//!assert_eq!(c5.apply_morphism(&p), c5.canonical());
+//! // Recovering the permutation that gives the canonical form
+//! let p = c5.morphism_to_canonical();
+//! assert_eq!(c5.apply_morphism(&p), c5.canonical());
+//!
+//! // Enumerating automorphisms
+//! assert_eq!(c5.canonical().automorphisms().count(), 10)
 //!```
 
 #![warn(
@@ -77,26 +86,50 @@ use crate::refine::Partition;
 use std::collections::btree_map::Entry::{Occupied, Vacant};
 use std::collections::BTreeMap;
 use std::rc::Rc;
+pub mod example;
 
 /// Objects that can be reduced modulo the actions of a permutation group.
 ///
-/// An object implement this trait if it has elements
-/// and if the group of permutations on of this elements
-/// acts on the object.
+/// An object that implement this trait has a set of elements assimilated to
+/// {0,...,n-1} on which the group of permutations can act.
+/// The purpose of the trait is to compute a normal form of
+/// the object modulo the permutation of its elements.
 pub trait Canonize
 where
     Self: Sized + Ord + Clone,
 {
-    /// Returns the number of vertices.
+    /// Return the number of vertices.
     ///
     /// The elements of `self` are assimilated to the number of `0..self.size()`.
     fn size(&self) -> usize;
 
-    /// Returns the result of the action of a permuation `perm` on the object.
+    /// Return the result of the action of a permuation `p` on the object.
     ///
-    /// The permutation `perm` is represented as a slice of size `self.size()`
-    /// where `perm[u]` is the image of `u` by the permutation.
-    fn apply_morphism(&self, perm: &[usize]) -> Self;
+    /// The input `p` is guarenteed to be a permutation represented
+    /// as a slice of size `self.size()`
+    /// where `p[u]` is the image of `u` by the permutation.
+    ///
+    /// The action of the permutation set on `Self` is assumed to be a group action.
+    /// ```
+    /// use canonical_form::Canonize;
+    /// use canonical_form::example::Graph;
+    ///
+    /// let g = Graph::new(4, &[(1, 2), (2, 3)]);
+    ///
+    /// let p = &[1, 2, 0, 3];
+    /// assert_eq!(g.apply_morphism(p), Graph::new(4, &[(2, 0), (0, 3)]));
+    ///
+    /// let identity = &[0, 1, 2, 3];
+    /// assert_eq!(g.apply_morphism(identity), g);
+    ///
+    /// let q = &[1, 0, 3, 2];
+    /// let p_circle_q = &[2, 1, 3, 0];
+    /// assert_eq!(
+    ///     g.apply_morphism(q).apply_morphism(p),
+    ///     g.apply_morphism(p_circle_q)
+    /// )
+    /// ```
+    fn apply_morphism(&self, p: &[usize]) -> Self;
 
     /// Optionally returns a value for each node that is invariant by isomorphism.
     ///
@@ -130,6 +163,17 @@ where
     /// another object of sane type `g.canonical()` that is isomorphic to `g`
     /// with the property that `g1` and `g2` are isomorphic if and only if
     /// `g1.canocial() == g2.canonical()`.
+    /// ```
+    /// use canonical_form::Canonize;
+    /// use canonical_form::example::Graph;
+    ///
+    /// let p5 = Graph::new(5, &[(0, 1), (1, 2), (2, 3), (3, 4)]);
+    /// let other_p5 = Graph::new(5, &[(3, 4), (0, 4), (0, 2), (1, 2)]);
+    /// assert_eq!(p5.canonical(), other_p5.canonical());
+    ///
+    /// let not_p5 = Graph::new(5, &[(0, 1), (1, 2), (2, 0), (3, 4)]);
+    /// assert!(p5.canonical() != not_p5.canonical());
+    /// ```
     fn canonical(&self) -> Self {
         self.canonical_typed(0)
     }
@@ -140,19 +184,49 @@ where
     ///
     /// So `g.canonical_typed(sigma)` returns a normal form of `g`
     /// modulo the permutations that stabilize the `sigma` first vertices.
+    /// ```
+    /// use canonical_form::Canonize;
+    /// use canonical_form::example::Graph;
+    ///
+    /// // p5 with the edge (0, 1) at an end
+    /// let p5 = Graph::new(5, &[(0, 1), (1, 2), (2, 3), (3, 4)]);
+    /// // p5 with the edge (0, 1) is in the middle
+    /// let p5_bis = Graph::new(5, &[(3, 4), (4, 1), (1, 0), (0, 2)]);
+    /// // If we fix the vertices 0 and 1, these two (rooted) graphs are different
+    /// assert!(p5.canonical_typed(2) != p5_bis.canonical_typed(2));
+    ///
+    /// let p5_ter = Graph::new(5, &[(0, 1), (1, 3), (3, 4), (4, 2)]);
+    /// assert_eq!(p5.canonical_typed(2), p5_ter.canonical_typed(2));
+    /// ```
     fn canonical_typed(&self, sigma: usize) -> Self {
         let partition = Partition::with_singletons(self.size(), sigma);
         canonical_constraint(self, partition)
     }
 
     #[inline]
-    /// Return a permutation `phi` such that `g.apply_morphism(&phi) = canonical(&g)`.
+    /// Return a permutation `p` such that `self.apply_morphism(&p) = self.canonical()`.
+    /// ```
+    /// use canonical_form::Canonize;
+    /// use canonical_form::example::Graph;
+    ///
+    /// let g = Graph::new(6, &[(0, 1), (1, 2), (2, 3), (3, 4), (3, 5)]);
+    /// let p = g.morphism_to_canonical();
+    /// assert_eq!(g.apply_morphism(&p), g.canonical());
+    /// ```
     fn morphism_to_canonical(&self) -> Vec<usize> {
         self.morphism_to_canonical_typed(0)
     }
 
     /// Return a permutation `phi` such that
     /// `g.apply_morphism(&phi) = canonical_typed(&g, sigma)`.
+    /// ```
+    /// use canonical_form::Canonize;
+    /// use canonical_form::example::Graph;
+    ///
+    /// let g = Graph::new(5, &[(0, 1), (1, 2), (2, 3), (3, 4)]);
+    /// let p = g.morphism_to_canonical_typed(2);
+    /// assert_eq!(g.apply_morphism(&p), g.canonical_typed(2));
+    /// ```
     fn morphism_to_canonical_typed(&self, sigma: usize) -> Vec<usize> {
         assert!(sigma <= self.size());
         let partition = Partition::with_singletons(self.size(), sigma);
@@ -162,6 +236,19 @@ where
     /// Iterator on the automorphism group of `g`.
     ///
     /// The input `g` must be in normal form.
+    /// ```
+    /// use canonical_form::Canonize;
+    /// use canonical_form::example::Graph;
+    ///
+    /// let c6 = Graph::new(6, &[(0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 0)]).canonical();
+    ///
+    /// let mut count = 0;
+    /// for p in c6.automorphisms() {
+    ///     assert_eq!(c6.apply_morphism(&p), c6);
+    ///     count += 1;
+    /// }
+    /// assert_eq!(count, 12);
+    /// ```
     #[inline]
     fn automorphisms(&self) -> AutomorphismIterator<Self> {
         self.stabilizer(0)
@@ -171,6 +258,23 @@ where
     /// that fix the `sigma` first vertices.
     ///
     /// The input `g` must be in normal form computed with `canonical_typed`.
+    /// ```
+    /// use canonical_form::Canonize;
+    /// use canonical_form::example::Graph;
+    ///
+    /// // Cube graph with one fixed vertex
+    /// let cube = Graph::new(8, &[(0, 1), (1, 2), (2, 3), (3, 0),
+    ///                            (4, 5), (5, 6), (6, 7), (7, 4),
+    ///                            (0, 4), (1, 5), (2, 6), (3, 7)]).canonical_typed(1);
+    ///
+    /// let mut count = 0;
+    /// for p in cube.stabilizer(1) {
+    ///     assert_eq!(cube.apply_morphism(&p), cube);
+    ///     assert_eq!(p[0], 0);
+    ///     count += 1;
+    /// }
+    /// assert_eq!(count, 6);
+    /// ```
     #[inline]
     fn stabilizer(&self, sigma: usize) -> AutomorphismIterator<Self> {
         let mut partition = Partition::simple(self.size());
@@ -179,13 +283,6 @@ where
         }
         AutomorphismIterator::new(self, partition)
     }
-
-    /// If true, then the relation of `invariant_neighborhood` are required to be true
-    /// for the inverse of the permutations instead of the pernutations.
-    /// That is, if `self.invariant_neighborhood[p[u]][i]` = `[p[v1], ..., p[vk]]`
-    /// Then `self.apply_morphism(p).invariant_neighborhood(p[u])[i]` is equal to
-    /// `[v1, ..., vk]` up to reordering.
-    const INVERT: bool = false;
 }
 
 /// Return the next part to be refined.
@@ -335,7 +432,7 @@ where
     let mut node = IsoTreeNode::root(&mut partition, g);
     loop {
         // If we have a leaf, treat it
-        if let Some(phi) = partition.as_bijection::<F>() {
+        if let Some(phi) = partition.as_bijection() {
             match zeta.entry(g.apply_morphism(phi)) {
                 Occupied(entry) =>
                 // We are in a branch isomorphic to a branch we explored
@@ -410,7 +507,7 @@ impl<F: Canonize> Iterator for AutomorphismIterator<F> {
                     None => return None,
                 }
             }
-            if let Some(phi) = self.partition.as_bijection::<F>() {
+            if let Some(phi) = self.partition.as_bijection() {
                 if self.g.apply_morphism(phi) == self.g {
                     return Some(phi.to_vec());
                 }
@@ -431,7 +528,7 @@ where
     let mut max = None;
     let mut phimax = Vec::new();
     loop {
-        if let Some(phi) = partition.as_bijection::<F>() {
+        if let Some(phi) = partition.as_bijection() {
             // If node is a leaf
             let phi_g = Some(g.apply_morphism(phi));
             if phi_g > max {
