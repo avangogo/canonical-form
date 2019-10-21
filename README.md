@@ -4,8 +4,10 @@ Algorithm to reduce combinatorial structures modulo isomorphism.
 
 This can typically be used to to test if two graphs are isomorphic.
 
-The algorithm manipulate its input by actions of permutations
-and by testing equallity, plus some user-defined functions
+The algorithm manipulates its input as a black box by
+the action of permutations
+and by testing equallity with element of its orbit,
+plus some user-defined functions
 that help to break symmetries.
 
 ```rust
