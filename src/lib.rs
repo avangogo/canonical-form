@@ -605,6 +605,15 @@ mod tests {
         let p = c5.morphism_to_canonical();
         assert_eq!(c5.apply_morphism(&p), c5.canonical());
     }
+
+    #[test]
+    fn empty_graphs() {
+        let empty = Graph::new(0, &[]);
+        assert_eq!(empty, empty.canonical());
+        assert_eq!(empty, empty.canonical_typed(0));
+        assert_eq!(empty.automorphisms().count(), 1);
+    }
+    
     #[test]
     fn automorphisms_iterator() {
         let c4 = Graph::new(4, &[(0, 1), (1, 2), (2, 3), (3, 0)]).canonical();

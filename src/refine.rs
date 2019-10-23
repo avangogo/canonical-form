@@ -52,7 +52,11 @@ impl Partition {
         assert!(k <= size);
         let mut sets = Vec::with_capacity(size);
         let num_parts = if k == size { k } else { k + 1 };
-        let mut set_id = vec![num_parts - 1; size];
+        let mut set_id = if size > 0 {
+            vec![num_parts - 1; size]
+        } else {
+            Vec::new()
+        };
         // Create the singletons
         for (i, set_i) in set_id.iter_mut().enumerate().take(k) {
             sets.push(Set {
