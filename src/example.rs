@@ -16,7 +16,7 @@ impl Graph {
             adj[v].push(u);
         }
         for nbrs in &mut adj {
-            nbrs.sort() // Necessary to make the derived `==` correct
+            nbrs.sort_unstable() // Necessary to make the derived `==` correct
         }
         Graph { adj }
     }
@@ -30,7 +30,7 @@ impl Canonize for Graph {
         let mut adj = vec![Vec::new(); self.size()];
         for (i, nbrs) in self.adj.iter().enumerate() {
             adj[perm[i]] = nbrs.iter().map(|&u| perm[u]).collect();
-            adj[perm[i]].sort();
+            adj[perm[i]].sort_unstable();
         }
         Graph { adj }
     }

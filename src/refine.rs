@@ -122,7 +122,7 @@ impl Partition {
     where
         F: FnMut(usize),
     {
-        self.touched.sort();
+        self.touched.sort_unstable();
         for &s in &self.touched {
             let set = self.sets[s];
             let begin = set.begin;
