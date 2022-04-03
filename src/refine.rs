@@ -64,7 +64,7 @@ impl Partition {
                 mid: i,
                 end: i + 1,
             });
-            *set_i = i
+            *set_i = i;
         }
         // Create the set with the rest, if it is non-empty
         if size > k {
@@ -165,7 +165,7 @@ impl Partition {
         for (i, &key) in key.iter().enumerate() {
             self.sieve(i, key);
         }
-        self.split(callback)
+        self.split(callback);
     }
 
     fn parent_set(&self, s: usize) -> usize {
@@ -178,7 +178,7 @@ impl Partition {
             let set = self.sets[s];
             let parent = self.parent_set(s);
             for e in &mut self.elems[set.begin..set.end] {
-                self.set_id[*e] = parent
+                self.set_id[*e] = parent;
             }
             self.sets[parent].begin = set.begin;
             self.sets[parent].mid = set.begin;
@@ -264,13 +264,13 @@ impl Partition {
             assert!(set.begin <= set.mid);
             assert!(set.mid <= set.end);
             for j in set.begin..set.end {
-                assert_eq!(self.set_id[self.elems[j]], i)
+                assert_eq!(self.set_id[self.elems[j]], i);
             }
             for j in set.begin..set.mid {
-                assert!(self.sieve[j] != 0)
+                assert!(self.sieve[j] != 0);
             }
             for j in set.mid..set.end {
-                assert_eq!(self.sieve[j], 0)
+                assert_eq!(self.sieve[j], 0);
             }
         }
     }

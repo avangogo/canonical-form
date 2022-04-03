@@ -310,7 +310,7 @@ where
     let n = g.size();
     let mut res = Vec::with_capacity(n);
     for i in 0..n {
-        res.push(g.invariant_neighborhood(i))
+        res.push(g.invariant_neighborhood(i));
     }
     res
 }
@@ -345,7 +345,7 @@ fn refine(partition: &mut Partition, invariants: &[Vec<Vec<usize>>], new_part: O
                     // Compute sieve
                     for &u in &part_buffer {
                         for &v in &invariants[u][i] {
-                            partition.sieve(v, weight)
+                            partition.sieve(v, weight);
                         }
                     }
                 }
@@ -355,13 +355,13 @@ fn refine(partition: &mut Partition, invariants: &[Vec<Vec<usize>>], new_part: O
             }
             partition.split(|new| {
                 stack.push(new);
-            })
+            });
         }
     }
 }
 
 /// Return the first index on which `u` and `v` differ.
-fn fca(u: &[usize], v: &[usize]) -> usize {
+const fn fca(u: &[usize], v: &[usize]) -> usize {
     let mut i = 0;
     while i < u.len() && i < v.len() && u[i] == v[i] {
         i += 1;
@@ -381,7 +381,7 @@ impl IsoTreeNode {
     fn root<F: Canonize>(partition: &mut Partition, g: &F) -> Self {
         let inv = Rc::new(precompute_invariant(g));
         if let Some(coloring) = g.invariant_coloring() {
-            partition.refine_by_value(&coloring, |_| {})
+            partition.refine_by_value(&coloring, |_| {});
         }
         Self::new(partition, inv, None)
     }
@@ -414,9 +414,9 @@ impl IsoTreeNode {
         }
     }
     fn restore(&self, partition: &mut Partition) {
-        partition.undo(self.nparts)
+        partition.undo(self.nparts);
     }
-    fn is_restored(&self, partition: &mut Partition) -> bool {
+    fn is_restored(&self, partition: &Partition) -> bool {
         partition.num_parts() == self.nparts
     }
 }
@@ -499,12 +499,12 @@ impl<F: Canonize> Iterator for AutomorphismIterator<F> {
             if let Some(u) = self.node.children.pop() {
                 let new_node = self.node.explore(u, &mut self.partition);
                 let old_node = std::mem::replace(&mut self.node, new_node);
-                self.tree.push(old_node)
+                self.tree.push(old_node);
             } else {
                 match self.tree.pop() {
                     Some(n) => {
                         n.restore(&mut self.partition);
-                        self.node = n
+                        self.node = n;
                     }
                     None => return None,
                 }
@@ -546,7 +546,7 @@ where
             match tree.pop() {
                 Some(n) => {
                     n.restore(&mut partition);
-                    node = n
+                    node = n;
                 }
                 None => break,
             }
@@ -613,7 +613,7 @@ mod tests {
         assert_eq!(empty, empty.canonical_typed(0));
         assert_eq!(empty.automorphisms().count(), 1);
     }
-    
+
     #[test]
     fn automorphisms_iterator() {
         let c4 = Graph::new(4, &[(0, 1), (1, 2), (2, 3), (3, 0)]).canonical();

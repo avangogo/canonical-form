@@ -16,9 +16,9 @@ impl Graph {
             adj[v].push(u);
         }
         for nbrs in &mut adj {
-            nbrs.sort_unstable() // Necessary to make the derived `==` correct
+            nbrs.sort_unstable(); // Necessary to make the derived `==` correct
         }
-        Graph { adj }
+        Self { adj }
     }
 }
 
@@ -32,7 +32,7 @@ impl Canonize for Graph {
             adj[perm[i]] = nbrs.iter().map(|&u| perm[u]).collect();
             adj[perm[i]].sort_unstable();
         }
-        Graph { adj }
+        Self { adj }
     }
     fn invariant_neighborhood(&self, u: usize) -> Vec<Vec<usize>> {
         vec![self.adj[u].clone()]
