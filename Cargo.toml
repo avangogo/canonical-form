@@ -1,6 +1,6 @@
 [package]
 name = "canonical-form"
-version = "0.10.0"
+version = "0.10.1"
 description = "Reduce graphs and other combinatorial structures modulo isomorphism."
 repository = "https://github.com/avangogo/canonical-form"
 license = "MIT"
