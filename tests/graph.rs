@@ -1,8 +1,8 @@
 extern crate canonical_form;
 
-use canonical_form::example::Graph;
 use canonical_form::Canonize;
-use rand::{prelude::SliceRandom, random, thread_rng};
+use canonical_form::example::Graph;
+use rand::{prelude::SliceRandom, random, rng};
 
 fn random_graph(n: usize) -> Graph {
     let mut edges = Vec::new();
@@ -18,7 +18,7 @@ fn random_graph(n: usize) -> Graph {
 
 fn random_permutation(n: usize) -> Vec<usize> {
     let mut perm: Vec<_> = (0..n).collect();
-    perm.shuffle(&mut thread_rng());
+    perm.shuffle(&mut rng());
     perm
 }
 

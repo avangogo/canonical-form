@@ -85,8 +85,8 @@
 mod refine;
 
 use crate::refine::Partition;
-use std::collections::btree_map::Entry::{Occupied, Vacant};
 use std::collections::BTreeMap;
+use std::collections::btree_map::Entry::{Occupied, Vacant};
 use std::rc::Rc;
 pub mod example;
 
@@ -291,7 +291,7 @@ where
 /// This part is chosen as a smallest part with at least 2 elements.
 /// Return None is the partition is discrete.
 fn target_selector(part: &Partition) -> Option<usize> {
-    let mut min = usize::max_value();
+    let mut min = usize::MAX;
     let mut arg_min = None;
     for i in part.parts() {
         let length = part.part(i).len();
@@ -332,7 +332,7 @@ fn refine(partition: &mut Partition, invariants: &[Vec<Vec<usize>>], new_part: O
         };
         // base
         let max_step = ((n + 1 - partition.num_parts()) as u64).pow(invariant_size as u32);
-        let threshold = u64::max_value() / max_step; //
+        let threshold = u64::MAX / max_step; //
         let mut part_buffer = Vec::new();
         while !stack.is_empty() && !partition.is_discrete() {
             let mut weight = 1; // multiplicator to make the values in the sieve unique
@@ -340,6 +340,7 @@ fn refine(partition: &mut Partition, invariants: &[Vec<Vec<usize>>], new_part: O
                 part_buffer.clear();
                 part_buffer.extend_from_slice(partition.part(part));
                 let factor = (part_buffer.len() + 1) as u64;
+                #[allow(clippy::needless_range_loop)]
                 for i in 0..invariant_size {
                     weight *= factor;
                     // Compute sieve
@@ -351,7 +352,7 @@ fn refine(partition: &mut Partition, invariants: &[Vec<Vec<usize>>], new_part: O
                 }
                 if weight > threshold {
                     break;
-                };
+                }
             }
             partition.split(|new| {
                 stack.push(new);
@@ -416,7 +417,7 @@ impl IsoTreeNode {
     fn restore(&self, partition: &mut Partition) {
         partition.undo(self.nparts);
     }
-    fn is_restored(&self, partition: &Partition) -> bool {
+    const fn is_restored(&self, partition: &Partition) -> bool {
         partition.num_parts() == self.nparts
     }
 }
@@ -447,7 +448,7 @@ where
                     let _ = entry.insert(path.clone());
                 }
             }
-        };
+        }
         // If there is a child, explore it
         if let Some(u) = node.children.pop() {
             let new_node = node.explore(u, &mut partition);
@@ -463,7 +464,7 @@ where
                 }
                 None => break,
             }
-        };
+        }
     }
     let (g_max, _) = zeta.into_iter().next_back().unwrap(); // return the largest image found
     g_max
@@ -501,19 +502,17 @@ impl<F: Canonize> Iterator for AutomorphismIterator<F> {
                 let old_node = std::mem::replace(&mut self.node, new_node);
                 self.tree.push(old_node);
             } else {
-                match self.tree.pop() {
-                    Some(n) => {
-                        n.restore(&mut self.partition);
-                        self.node = n;
-                    }
-                    None => return None,
+                {
+                    let n = self.tree.pop()?;
+                    n.restore(&mut self.partition);
+                    self.node = n;
                 }
             }
-            if let Some(phi) = self.partition.as_bijection() {
-                if self.g.apply_morphism(phi) == self.g {
-                    return Some(phi.to_vec());
-                }
-            };
+            if let Some(phi) = self.partition.as_bijection()
+                && self.g.apply_morphism(phi) == self.g
+            {
+                return Some(phi.to_vec());
+            }
         }
     }
 }
@@ -537,7 +536,7 @@ where
                 max = phi_g;
                 phimax = phi.to_vec();
             }
-        };
+        }
         if let Some(u) = node.children.pop() {
             let new_node = node.explore(u, &mut partition);
             tree.push(node);
