@@ -1,5 +1,7 @@
 use canonical_form::Canonize;
-use criterion::{Criterion, black_box, criterion_group, criterion_main};
+use criterion::{Criterion, criterion_group, criterion_main};
+use rand::RngExt;
+use std::hint::black_box;
 
 #[derive(Ord, PartialOrd, PartialEq, Eq, Clone, Debug)]
 struct Graph {
@@ -89,7 +91,7 @@ fn gnp<R: Rng>(n: usize, p: f64, rng: &mut R) -> Graph {
     let mut edges = Vec::new();
     for i in 0..n {
         for j in 0..i {
-            if rng.gen_bool(p) {
+            if rng.random_bool(p) {
                 edges.push((i, j))
             }
         }
