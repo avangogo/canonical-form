@@ -9,6 +9,7 @@ pub struct Graph {
 
 impl Graph {
     /// Create a graph of size `n` with the edges in `edges`
+    #[must_use]
     pub fn new(n: usize, edges: &[(usize, usize)]) -> Self {
         let mut adj = vec![Vec::new(); n];
         for &(u, v) in edges {

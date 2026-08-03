@@ -1,7 +1,7 @@
 extern crate canonical_form;
 
-use canonical_form::example::Graph;
 use canonical_form::Canonize;
+use canonical_form::example::Graph;
 use rand::{prelude::SliceRandom, random, rng};
 
 fn random_graph(n: usize) -> Graph {

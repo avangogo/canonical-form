@@ -1,5 +1,5 @@
 use canonical_form::Canonize;
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, black_box, criterion_group, criterion_main};
 
 #[derive(Ord, PartialOrd, PartialEq, Eq, Clone, Debug)]
 struct Graph {

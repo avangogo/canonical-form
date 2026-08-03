@@ -12,7 +12,7 @@ pub struct Partition {
     elems: Vec<usize>,
     /// `elems[rev_elem[i]] = i`
     rev_elems: Vec<usize>,
-    /// i is in part set_id[i]
+    /// i is in part `set_id`[i]
     set_id: Vec<usize>,
     /// List of parts indexed by their id
     sets: Vec<Set>,
@@ -104,10 +104,10 @@ impl Partition {
             if set.len() == 1 {
                 // A part of size one cannot be split further: we ignore the call
                 return;
-            };
+            }
             if set.mid == set.begin {
                 self.touched.push(self.set_id[e]);
-            };
+            }
             // update the partition so that `e` is in `elems[s.begin..s.mid]`
             let new_pos = set.mid;
             set.mid += 1;
@@ -194,18 +194,18 @@ impl Partition {
 
     #[inline]
     /// Number of parts in the partition.
-    pub fn num_parts(&self) -> usize {
+    pub const fn num_parts(&self) -> usize {
         self.sets.len()
     }
 
     /// Number of elememts in the partition.
-    pub fn num_elems(&self) -> usize {
+    pub const fn num_elems(&self) -> usize {
         self.elems.len()
     }
 
     #[inline]
     /// Return `true` if the partition contains only cells of size 1.
-    pub fn is_discrete(&self) -> bool {
+    pub const fn is_discrete(&self) -> bool {
         self.elems.len() == self.sets.len()
     }
 
@@ -281,7 +281,7 @@ pub struct PartsIterator<'a> {
     pos: usize,
 }
 
-impl<'a> Iterator for PartsIterator<'a> {
+impl Iterator for PartsIterator<'_> {
     type Item = usize;
 
     fn next(&mut self) -> Option<Self::Item> {
