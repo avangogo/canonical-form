@@ -501,12 +501,10 @@ impl<F: Canonize> Iterator for AutomorphismIterator<F> {
                 let old_node = std::mem::replace(&mut self.node, new_node);
                 self.tree.push(old_node);
             } else {
-                match self.tree.pop() {
-                    Some(n) => {
-                        n.restore(&mut self.partition);
-                        self.node = n;
-                    }
-                    None => return None,
+                {
+                    let n = self.tree.pop()?;
+                    n.restore(&mut self.partition);
+                    self.node = n;
                 }
             }
             if let Some(phi) = self.partition.as_bijection() {

@@ -296,11 +296,7 @@ impl<'a> Iterator for PartsIterator<'a> {
 
     fn size_hint(&self) -> (usize, Option<usize>) {
         let n_parts = self.partition.num_parts();
-        let lower = if self.pos < n_parts {
-            n_parts - self.pos
-        } else {
-            0
-        };
+        let lower = n_parts.saturating_sub(self.pos);
         (lower, Some(n_parts))
     }
 }
