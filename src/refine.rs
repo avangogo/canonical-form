@@ -100,15 +100,16 @@ impl Partition {
     /// Add `x` to the sieve value of `e` and update the related administration
     pub fn sieve(&mut self, e: usize, x: u64) {
         if self.sieve[e] == 0 {
-            let set = &mut self.sets[self.set_id[e]];
+            let set_id = self.set_id[e];
+            let set = &mut self.sets[set_id];
             if set.len() == 1 {
                 // A part of size one cannot be split further: we ignore the call
                 return;
             }
             if set.mid == set.begin {
-                self.touched.push(self.set_id[e]);
+                self.touched.push(set_id);
             }
-            // update the partition so that `e` is in `elems[s.begin..s.mid]`
+            // update the partition so that `e` is in `elems[set.begin..set.mid]`
             let new_pos = set.mid;
             set.mid += 1;
             self.swap(new_pos, self.rev_elems[e]);
@@ -130,7 +131,7 @@ impl Partition {
             self.sets[s].mid = begin;
             let sieve = &self.sieve;
 
-            self.elems[begin..end].sort_by_key(|e| sieve[*e]);
+            self.elems[begin..end].sort_unstable_by_key(|e: &usize| sieve[*e]);
 
             let mut current_set = s;
             let mut current_key = self.sieve[self.elems[set.end - 1]];
@@ -172,24 +173,25 @@ impl Partition {
         self.set_id[self.elems[self.sets[s].end]]
     }
 
-    /// Delete the last sets created until there are only nsets left
-    pub fn undo(&mut self, nparts: usize) {
-        for s in (nparts..self.num_parts()).rev() {
+    /// Delete the last sets created until there are only n_parts sets left
+    pub fn undo(&mut self, n_parts: usize) {
+        for s in (n_parts..self.num_parts()).rev() {
             let set = self.sets[s];
             let parent = self.parent_set(s);
-            for e in &mut self.elems[set.begin..set.end] {
+            for e in &self.elems[set.begin..set.end] {
                 self.set_id[*e] = parent;
             }
             self.sets[parent].begin = set.begin;
             self.sets[parent].mid = set.begin;
         }
-        self.sets.truncate(nparts);
+        self.sets.truncate(n_parts);
     }
 
     #[inline]
     /// Return the slice of the elements of the part `part`.
     pub fn part(&self, part: usize) -> &[usize] {
-        &self.elems[self.sets[part].begin..self.sets[part].end]
+        let set = self.sets[part];
+        &self.elems[set.begin..set.end]
     }
 
     #[inline]
