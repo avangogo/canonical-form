@@ -98,6 +98,7 @@ impl Partition {
     }
 
     /// Add `x` to the sieve value of `e` and update the related administration
+    #[inline]
     pub fn sieve(&mut self, e: usize, x: u64) {
         if self.sieve[e] == 0 {
             let set_id = self.set_id[e];
@@ -164,7 +165,9 @@ impl Partition {
         F: FnMut(usize),
     {
         for (i, &key) in key.iter().enumerate() {
-            self.sieve(i, key);
+            if key != 0 {
+                self.sieve(i, key);
+            }
         }
         self.split(callback);
     }
