@@ -82,9 +82,11 @@
     unused_results
 )]
 
-mod refine;
+mod refinement;
+mod refiner;
 
-use crate::refine::Partition;
+use crate::refinement::Partition;
+use crate::refiner::WL1Refiner;
 use std::collections::BTreeMap;
 use std::collections::btree_map::Entry::{Occupied, Vacant};
 use std::rc::Rc;
@@ -303,64 +305,6 @@ fn target_selector(part: &Partition) -> Option<usize> {
     arg_min
 }
 
-fn precompute_invariant<F>(g: &F) -> Vec<Vec<Vec<usize>>>
-where
-    F: Canonize,
-{
-    let n = g.size();
-    let mut res = Vec::with_capacity(n);
-    for i in 0..n {
-        res.push(g.invariant_neighborhood(i));
-    }
-    res
-}
-
-/// Compute the coarsest refinement of `partition` with part undistinguishable
-/// by the invarriants.
-/// If `new_part` is `Some(p)`, assumes that the partition is up-to-date up to the creation
-/// of the part `p`.
-fn refine(partition: &mut Partition, invariants: &[Vec<Vec<usize>>], new_part: Option<usize>) {
-    if !partition.is_discrete() {
-        let n = partition.num_elems();
-        assert!(n >= 2);
-        let invariant_size = invariants[0].len();
-        debug_assert!(invariants.iter().all(|v| v.len() == invariant_size));
-        // Stack contains the new created partitions
-        let mut stack: Vec<_> = match new_part {
-            Some(p) => vec![p],
-            None => partition.parts().collect(),
-        };
-        // base
-        let max_step = ((n + 1 - partition.num_parts()) as u64).pow(invariant_size as u32);
-        let threshold = u64::MAX / max_step; //
-        let mut part_buffer = Vec::new();
-        while !stack.is_empty() && !partition.is_discrete() {
-            let mut weight = 1; // multiplicator to make the values in the sieve unique
-            while let Some(part) = stack.pop() {
-                part_buffer.clear();
-                part_buffer.extend_from_slice(partition.part(part));
-                let factor = (part_buffer.len() + 1) as u64;
-                #[allow(clippy::needless_range_loop)]
-                for i in 0..invariant_size {
-                    weight *= factor;
-                    // Compute sieve
-                    for &u in &part_buffer {
-                        for &v in &invariants[u][i] {
-                            partition.sieve(v, weight);
-                        }
-                    }
-                }
-                if weight > threshold {
-                    break;
-                }
-            }
-            partition.split(|new| {
-                stack.push(new);
-            });
-        }
-    }
-}
-
 /// Return the first index on which `u` and `v` differ.
 const fn fca(u: &[usize], v: &[usize]) -> usize {
     let mut i = 0;
@@ -375,12 +319,12 @@ const fn fca(u: &[usize], v: &[usize]) -> usize {
 struct IsoTreeNode {
     nparts: usize,
     children: Vec<usize>,
-    inv: Rc<Vec<Vec<Vec<usize>>>>,
+    refiner: Rc<WL1Refiner>,
 }
 
 impl IsoTreeNode {
     fn root<F: Canonize>(partition: &mut Partition, g: &F) -> Self {
-        let inv = Rc::new(precompute_invariant(g));
+        let inv = Rc::new(WL1Refiner::new(g));
         if let Some(coloring) = g.invariant_coloring() {
             partition.refine_by_value(&coloring, |_| {});
         }
@@ -388,30 +332,30 @@ impl IsoTreeNode {
     }
     fn new(
         partition: &mut Partition,
-        inv: Rc<Vec<Vec<Vec<usize>>>>,
+        refiner: Rc<WL1Refiner>,
         new_part: Option<usize>,
     ) -> Self {
-        refine(partition, &inv, new_part);
+        refiner.refine(partition, new_part);
         Self {
             children: match target_selector(partition) {
                 Some(set) => partition.part(set).to_vec(),
                 None => Vec::new(),
             },
             nparts: partition.num_parts(),
-            inv,
+            refiner,
         }
     }
     fn explore(&self, v: usize, pi: &mut Partition) -> Self {
         debug_assert!(self.is_restored(pi));
         let new_part = pi.individualize(v);
-        Self::new(pi, self.inv.clone(), new_part)
+        Self::new(pi, self.refiner.clone(), new_part)
     }
     // Should never be used
     fn dummy() -> Self {
         Self {
             children: Vec::new(),
             nparts: 1,
-            inv: Rc::new(Vec::new()),
+            refiner: Rc::new(WL1Refiner::dummy()),
         }
     }
     fn restore(&self, partition: &mut Partition) {
@@ -420,7 +364,7 @@ impl IsoTreeNode {
     const fn is_restored(&self, partition: &Partition) -> bool {
         partition.num_parts() == self.nparts
     }
-}
+}                                                                                                                                                                                                                                                    
 
 /// Normal form of `g` under the action of isomorphisms that
 /// stabilize the parts of `partition`.
