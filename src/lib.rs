@@ -293,16 +293,7 @@ where
 /// This part is chosen as a smallest part with at least 2 elements.
 /// Return None is the partition is discrete.
 fn target_selector(part: &Partition) -> Option<usize> {
-    let mut min = usize::MAX;
-    let mut arg_min = None;
-    for i in part.parts() {
-        let length = part.part(i).len();
-        if 2 <= length && (length < min) {
-            min = length;
-            arg_min = Some(i);
-        }
-    }
-    arg_min
+    part.smallest_non_singleton()
 }
 
 /// Return the first index on which `u` and `v` differ.
@@ -330,11 +321,7 @@ impl IsoTreeNode {
         }
         Self::new(partition, inv, None)
     }
-    fn new(
-        partition: &mut Partition,
-        refiner: Rc<WL1Refiner>,
-        new_part: Option<usize>,
-    ) -> Self {
+    fn new(partition: &mut Partition, refiner: Rc<WL1Refiner>, new_part: Option<usize>) -> Self {
         refiner.refine(partition, new_part);
         Self {
             children: match target_selector(partition) {
@@ -364,7 +351,7 @@ impl IsoTreeNode {
     const fn is_restored(&self, partition: &Partition) -> bool {
         partition.num_parts() == self.nparts
     }
-}                                                                                                                                                                                                                                                    
+}
 
 /// Normal form of `g` under the action of isomorphisms that
 /// stabilize the parts of `partition`.
