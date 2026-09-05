@@ -82,11 +82,9 @@
     unused_results
 )]
 
-mod refinement;
-mod refiner;
+mod refine;
 
-use crate::refinement::Partition;
-use crate::refiner::WL1Refiner;
+use crate::refine::Partition;
 use std::collections::BTreeMap;
 use std::collections::btree_map::Entry::{Occupied, Vacant};
 use std::rc::Rc;
@@ -293,7 +291,74 @@ where
 /// This part is chosen as a smallest part with at least 2 elements.
 /// Return None is the partition is discrete.
 fn target_selector(part: &Partition) -> Option<usize> {
-    part.smallest_non_singleton()
+    let mut min = usize::MAX;
+    let mut arg_min = None;
+    for i in part.parts() {
+        let length = part.part(i).len();
+        if 2 <= length && (length < min) {
+            min = length;
+            arg_min = Some(i);
+        }
+    }
+    arg_min
+}
+
+fn precompute_invariant<F>(g: &F) -> Vec<Vec<Vec<usize>>>
+where
+    F: Canonize,
+{
+    let n = g.size();
+    let mut res = Vec::with_capacity(n);
+    for i in 0..n {
+        res.push(g.invariant_neighborhood(i));
+    }
+    res
+}
+
+/// Compute the coarsest refinement of `partition` with part undistinguishable
+/// by the invarriants.
+/// If `new_part` is `Some(p)`, assumes that the partition is up-to-date up to the creation
+/// of the part `p`.
+fn refine(partition: &mut Partition, invariants: &[Vec<Vec<usize>>], new_part: Option<usize>) {
+    if !partition.is_discrete() {
+        let n = partition.num_elems();
+        assert!(n >= 2);
+        let invariant_size = invariants[0].len();
+        debug_assert!(invariants.iter().all(|v| v.len() == invariant_size));
+        // Stack contains the new created partitions
+        let mut stack: Vec<_> = match new_part {
+            Some(p) => vec![p],
+            None => partition.parts().collect(),
+        };
+        // base
+        let max_step = ((n + 1 - partition.num_parts()) as u64).pow(invariant_size as u32);
+        let threshold = u64::MAX / max_step; //
+        let mut part_buffer = Vec::new();
+        while !stack.is_empty() && !partition.is_discrete() {
+            let mut weight = 1; // multiplicator to make the values in the sieve unique
+            while let Some(part) = stack.pop() {
+                part_buffer.clear();
+                part_buffer.extend_from_slice(partition.part(part));
+                let factor = (part_buffer.len() + 1) as u64;
+                #[allow(clippy::needless_range_loop)]
+                for i in 0..invariant_size {
+                    weight *= factor;
+                    // Compute sieve
+                    for &u in &part_buffer {
+                        for &v in &invariants[u][i] {
+                            partition.sieve(v, weight);
+                        }
+                    }
+                }
+                if weight > threshold {
+                    break;
+                }
+            }
+            partition.split(|new| {
+                stack.push(new);
+            });
+        }
+    }
 }
 
 /// Return the first index on which `u` and `v` differ.
@@ -310,39 +375,43 @@ const fn fca(u: &[usize], v: &[usize]) -> usize {
 struct IsoTreeNode {
     nparts: usize,
     children: Vec<usize>,
-    refiner: Rc<WL1Refiner>,
+    inv: Rc<Vec<Vec<Vec<usize>>>>,
 }
 
 impl IsoTreeNode {
     fn root<F: Canonize>(partition: &mut Partition, g: &F) -> Self {
-        let inv = Rc::new(WL1Refiner::new(g));
+        let inv = Rc::new(precompute_invariant(g));
         if let Some(coloring) = g.invariant_coloring() {
             partition.refine_by_value(&coloring, |_| {});
         }
         Self::new(partition, inv, None)
     }
-    fn new(partition: &mut Partition, refiner: Rc<WL1Refiner>, new_part: Option<usize>) -> Self {
-        refiner.refine(partition, new_part);
+    fn new(
+        partition: &mut Partition,
+        inv: Rc<Vec<Vec<Vec<usize>>>>,
+        new_part: Option<usize>,
+    ) -> Self {
+        refine(partition, &inv, new_part);
         Self {
             children: match target_selector(partition) {
                 Some(set) => partition.part(set).to_vec(),
                 None => Vec::new(),
             },
             nparts: partition.num_parts(),
-            refiner,
+            inv,
         }
     }
     fn explore(&self, v: usize, pi: &mut Partition) -> Self {
         debug_assert!(self.is_restored(pi));
         let new_part = pi.individualize(v);
-        Self::new(pi, self.refiner.clone(), new_part)
+        Self::new(pi, self.inv.clone(), new_part)
     }
     // Should never be used
     fn dummy() -> Self {
         Self {
             children: Vec::new(),
             nparts: 1,
-            refiner: Rc::new(WL1Refiner::dummy()),
+            inv: Rc::new(Vec::new()),
         }
     }
     fn restore(&self, partition: &mut Partition) {

@@ -98,19 +98,17 @@ impl Partition {
     }
 
     /// Add `x` to the sieve value of `e` and update the related administration
-    #[inline]
     pub fn sieve(&mut self, e: usize, x: u64) {
         if self.sieve[e] == 0 {
-            let set_id = self.set_id[e];
-            let set = &mut self.sets[set_id];
+            let set = &mut self.sets[self.set_id[e]];
             if set.len() == 1 {
                 // A part of size one cannot be split further: we ignore the call
                 return;
             }
             if set.mid == set.begin {
-                self.touched.push(set_id);
+                self.touched.push(self.set_id[e]);
             }
-            // update the partition so that `e` is in `elems[set.begin..set.mid]`
+            // update the partition so that `e` is in `elems[s.begin..s.mid]`
             let new_pos = set.mid;
             set.mid += 1;
             self.swap(new_pos, self.rev_elems[e]);
@@ -132,7 +130,7 @@ impl Partition {
             self.sets[s].mid = begin;
             let sieve = &self.sieve;
 
-            self.elems[begin..end].sort_unstable_by_key(|e: &usize| sieve[*e]);
+            self.elems[begin..end].sort_by_key(|e| sieve[*e]);
 
             let mut current_set = s;
             let mut current_key = self.sieve[self.elems[set.end - 1]];
@@ -165,9 +163,7 @@ impl Partition {
         F: FnMut(usize),
     {
         for (i, &key) in key.iter().enumerate() {
-            if key != 0 {
-                self.sieve(i, key);
-            }
+            self.sieve(i, key);
         }
         self.split(callback);
     }
@@ -176,25 +172,24 @@ impl Partition {
         self.set_id[self.elems[self.sets[s].end]]
     }
 
-    /// Delete the last sets created until there are only n_parts sets left
-    pub fn undo(&mut self, n_parts: usize) {
-        for s in (n_parts..self.num_parts()).rev() {
+    /// Delete the last sets created until there are only nsets left
+    pub fn undo(&mut self, nparts: usize) {
+        for s in (nparts..self.num_parts()).rev() {
             let set = self.sets[s];
             let parent = self.parent_set(s);
-            for e in &self.elems[set.begin..set.end] {
+            for e in &mut self.elems[set.begin..set.end] {
                 self.set_id[*e] = parent;
             }
             self.sets[parent].begin = set.begin;
             self.sets[parent].mid = set.begin;
         }
-        self.sets.truncate(n_parts);
+        self.sets.truncate(nparts);
     }
 
     #[inline]
     /// Return the slice of the elements of the part `part`.
     pub fn part(&self, part: usize) -> &[usize] {
-        let set = self.sets[part];
-        &self.elems[set.begin..set.end]
+        &self.elems[self.sets[part].begin..self.sets[part].end]
     }
 
     #[inline]
@@ -248,21 +243,8 @@ impl Partition {
         }
     }
 
-    /// Return a smallest part with at least 2 elements,
-    /// or `None` if the partition is discrete.
-    ///
-    /// Ties are broken by the position of the part in the partition.
-    pub fn smallest_non_singleton(&self) -> Option<usize> {
-        self.sets
-            .iter()
-            .enumerate()
-            .filter(|(_, set)| set.len() >= 2)
-            .min_by_key(|(_, set)| (set.len(), set.begin))
-            .map(|(i, _)| i)
-    }
-
     /// Return the list of the cell in the order of the partition.
-    pub const fn parts(&self) -> impl Iterator<Item = usize> {
+    pub const fn parts(&self) -> PartsIterator<'_> {
         PartsIterator {
             partition: self,
             pos: 0,
