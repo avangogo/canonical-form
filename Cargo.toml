@@ -19,10 +19,3 @@ rand = "0.10.2"
 [[bench]]
 name = "graphs"
 harness = false
-
-[profile.release]
-debug = true
-strip=false
-
-[target.x86_64-unknown-linux-gnu]
-rustflags = ["-Clink-arg=-Wl,--no-rosegment"]
