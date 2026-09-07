@@ -12,6 +12,14 @@ categories = ["algorithms", "mathematics"]
 edition = "2024"
 publish = true
 
+# One codegen unit: with the default 16 the partitioner decides whether
+# `split` and `refine` get inlined into the tree walk, and an edit to an
+# unrelated file can flip that decision and the runtime by ~10%. Only affects
+# builds rooted here (tests, benches, examples) — a consumer's own profile
+# governs their build of this crate.
+[profile.release]
+codegen-units = 1
+
 [dev-dependencies]
 criterion = "0.8.2"
 rand = "0.10.2"
