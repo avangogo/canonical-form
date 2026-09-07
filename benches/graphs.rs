@@ -31,8 +31,8 @@ impl Canonize for Graph {
         }
         Graph { adj }
     }
-    fn invariant_neighborhood(&self, u: usize) -> Vec<Vec<usize>> {
-        vec![self.adj[u].clone()]
+    fn invariant_neighborhood(&self, u: usize) -> impl Iterator<Item = (usize, u64)> {
+        self.adj[u].iter().map(|&v| (v, 0))
     }
 }
 
